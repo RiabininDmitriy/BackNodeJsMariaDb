@@ -7,7 +7,6 @@ import { chatroom } from './models/chatroom'
 import { user } from './models/user'
 import jwt from 'jsonwebtoken'
 import expressJwt from 'express-jwt';
-import jwtDecode from 'jwt-decode'
 
 const app = express();
 const config = {
@@ -38,11 +37,10 @@ app.use(jwtWare())
 
 app.post("/authenticate", async function authenticate(req, res) { //контроллер авторизации
   const { nick, pass } = req.body
-  const userRecord = await user.findOne({ where: { user: nick, password: pass } });
+  const userRecord = await user.findOne({ where: { user: nick, password: pass },attributes:{exclude:["password"]} });
   if (userRecord) {
-    console.log(userRecord)
     const token = jwt.sign({ sub: userRecord.id }, config.secret); //подписывам токен нашим ключем
-    res.status(201).send({ token })
+    res.status(201).send({ token ,user : userRecord })
   }
   res.status(404).send()
 })
@@ -52,8 +50,9 @@ app.post("/registration",async (req,res) =>{
   const existUser = await user.findOne({where :{user : nick}})
   if(!existUser) {
     const newUser = await user.create({user:nick,password:pass})
+    delete newUser.dataValues.password;
     const token = jwt.sign({ sub: newUser.id }, config.secret); //подписывам токен нашим ключем
-    res.status(201).send({ token })
+    res.status(201).send({ token , user:newUser })
   }
   res.send(400).send({err: "User is exist"})
 })
